@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Voxly — Live Polling Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+  <div id="page-transition"></div>
+
+  <nav id="navbar">
+    <a class="nav-logo" data-nav="landing">
+      <div class="logo-mark">
+        <svg viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="10" width="3" height="7" rx="1.5" fill="currentColor" />
+          <rect x="8.5" y="6" width="3" height="11" rx="1.5" fill="currentColor" />
+          <rect x="14" y="3" width="3" height="14" rx="1.5" fill="currentColor" />
+        </svg>
+      </div>
+      <span>Voxly</span>
+    </a>
+    <div class="nav-center" id="nav-guest">
+      <a class="nav-link" onclick="scrollToFeatures()">Features</a>
+      <div class="nav-sep"></div>
+      <a class="nav-demo-badge" data-nav="poll-public"><span class="nav-demo-dot"></span>Live demo</a>
+    </div>
+    <div class="nav-center" id="nav-auth" style="display:none">
+      <a class="nav-link" data-nav="dashboard">Dashboard</a>
+      <a class="nav-link" data-nav="create">New poll</a>
+    </div>
+    <div class="nav-right">
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+        <span class="t-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg></span>
+        <span class="t-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg></span>
+      </button>
+      <div id="nav-guest-btns">
+        <button class="btn ghost" data-nav="login">Log in</button>
+        <button class="btn primary" data-nav="signup">Get started</button>
+      </div>
+      <div id="nav-auth-btns" style="display:none">
+        <div class="nav-avatar" id="nav-avatar">V</div>
+        <button class="btn ghost" id="logout-btn">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="app">
+
+    <section class="page active" id="page-landing">
+      <div class="hero">
+        <div class="hero-grid"></div>
+        <div class="hero-orbs">
+          <div class="orb o1"></div>
+          <div class="orb o2"></div>
+        </div>
+        <div class="hero-left">
+          <div class="hero-badge"><span class="live-dot"></span>Real-time polling platform</div>
+          <h1 class="hero-title">
+            <span class="w1">Polls</span> <span class="w2">that</span><br>
+            <em class="w3">breathe</em> <span class="w4">live.</span>
+          </h1>
+          <p class="hero-sub">Create polls, share instantly, watch responses flow in real-time. Built for teams who need
+            honest feedback fast.</p>
+          <div class="hero-cta">
+            <button class="btn primary lg" data-nav="signup">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create a poll
+            </button>
+            <button class="btn ghost lg" data-nav="poll-public">See demo →</button>
+          </div>
+          <div class="hero-stats">
+            <div class="hs"><span class="hs-num" data-count="12400">0</span><span class="hs-lbl">Polls created</span>
+            </div>
+            <div class="hs-div"></div>
+            <div class="hs"><span class="hs-num" data-count="98200">0</span><span class="hs-lbl">Responses</span></div>
+            <div class="hs-div"></div>
+            <div class="hs"><span class="hs-num" data-count="3800">0</span><span class="hs-lbl">Teams</span></div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="hero-card">
+            <div class="hc-head">
+              <div>
+                <div class="hc-title">Team Retro Q2</div>
+                <div class="hc-meta">4 questions · anonymous</div>
+              </div>
+              <span class="badge live-badge"><span class="bdot pulse"></span>Live</span>
+            </div>
+            <div class="hc-body">
+              <div class="hc-q">What slowed us down this sprint?</div>
+              <div class="hc-bar">
+                <div class="hcbl"><span>Too many meetings</span><span class="mono" id="hb1p">42%</span></div>
+                <div class="hcbt">
+                  <div class="hcbf hi" id="hb1" style="width:42%"></div>
+                </div>
+              </div>
+              <div class="hc-bar">
+                <div class="hcbl"><span>Unclear requirements</span><span class="mono" id="hb2p">31%</span></div>
+                <div class="hcbt">
+                  <div class="hcbf md" id="hb2" style="width:31%"></div>
+                </div>
+              </div>
+              <div class="hc-bar">
+                <div class="hcbl"><span>Context switching</span><span class="mono" id="hb3p">18%</span></div>
+                <div class="hcbt">
+                  <div class="hcbf lo" id="hb3" style="width:18%"></div>
+                </div>
+              </div>
+              <div class="hc-bar">
+                <div class="hcbl"><span>Technical debt</span><span class="mono" id="hb4p">9%</span></div>
+                <div class="hcbt">
+                  <div class="hcbf dim" id="hb4" style="width:9%"></div>
+                </div>
+              </div>
+              <div class="hc-foot"><span>Live responses</span><strong class="mono" id="hero-count">127</strong></div>
+            </div>
+          </div>
+          <div class="notif-chip" id="notif-chip">
+            <span class="notif-dot"></span>New response just came in
+          </div>
+        </div>
+      </div>
+
+      <div class="features-wrap">
+        <div class="feat-label">What's inside</div>
+        <h2 class="feat-title">Everything a poll needs.</h2>
+        <div class="feat-grid">
+          <div class="feat-card" data-delay="0">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12,7 12,12 15,15" />
+              </svg></div>
+            <h3>Expiry control</h3>
+            <p>Polls auto-expire. Responses lock after time's up, link transitions to results.</p>
+          </div>
+          <div class="feat-card" data-delay="80">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg></div>
+            <h3>Anonymous mode</h3>
+            <p>Choose anonymous or authenticated responses per poll. No login to respond.</p>
+          </div>
+          <div class="feat-card" data-delay="160">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
+              </svg></div>
+            <h3>Live analytics</h3>
+            <p>Responses update via WebSocket. Real-time counts, completion rate, live feed.</p>
+          </div>
+          <div class="feat-card" data-delay="240">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg></div>
+            <h3>Custom OIDC</h3>
+            <p>Full OpenID Connect provider. Issue JWTs, refresh tokens, protect routes.</p>
+          </div>
+          <div class="feat-card" data-delay="320">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg></div>
+            <h3>Shareable link</h3>
+            <p>Every poll gets a unique URL. Share anywhere. Public or login-gated.</p>
+          </div>
+          <div class="feat-card" data-delay="400">
+            <div class="feat-icon" style="--c:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <polyline points="9,11 12,14 22,4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg></div>
+            <h3>Publish results</h3>
+            <p>Publish results publicly after close. Same link becomes a results page.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-login">
+      <div class="auth-scene">
+        <div class="auth-orb"></div>
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="logo-mark sm"><svg viewBox="0 0 20 20" fill="none">
+                <rect x="3" y="10" width="3" height="7" rx="1.5" fill="currentColor" />
+                <rect x="8.5" y="6" width="3" height="11" rx="1.5" fill="currentColor" />
+                <rect x="14" y="3" width="3" height="14" rx="1.5" fill="currentColor" />
+              </svg></div><span>Voxly</span>
+          </div>
+          <h2>Welcome back</h2>
+          <p class="auth-sub">Sign in to your account</p>
+          <div class="form-err" id="login-err" style="display:none"></div>
+          <div class="fg"><label class="fl">Email</label>
+            <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg><input class="fi" type="email" placeholder="you@example.com" id="login-email"
+                autocomplete="email" /></div>
+          </div>
+          <div class="fg"><label class="fl">Password</label>
+            <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg><input class="fi" type="password" placeholder="••••••••" id="login-pw"
+                autocomplete="current-password" /><button class="eye" type="button"
+                onclick="togglePw('login-pw',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg></button></div>
+          </div>
+          <button class="btn primary full" id="login-btn" onclick="doLogin()"><span class="bt">Sign in</span><span
+              class="bl" style="display:none"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg></span></button>
+          <p class="auth-foot">No account? <a class="al" data-nav="signup">Create one →</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-signup">
+      <div class="auth-scene">
+        <div class="auth-orb"></div>
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="logo-mark sm"><svg viewBox="0 0 20 20" fill="none">
+                <rect x="3" y="10" width="3" height="7" rx="1.5" fill="currentColor" />
+                <rect x="8.5" y="6" width="3" height="11" rx="1.5" fill="currentColor" />
+                <rect x="14" y="3" width="3" height="14" rx="1.5" fill="currentColor" />
+              </svg></div><span>Voxly</span>
+          </div>
+          <h2>Create account</h2>
+          <p class="auth-sub">Start building polls in seconds</p>
+          <div class="form-err" id="signup-err" style="display:none"></div>
+          <div class="fg"><label class="fl">Full name</label>
+            <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg><input class="fi" type="text" placeholder="Full Name" id="signup-name" autocomplete="name" />
+            </div>
+          </div>
+          <div class="fg"><label class="fl">Email</label>
+            <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg><input class="fi" type="email" placeholder="you@example.com" id="signup-email"
+                autocomplete="email" /></div>
+          </div>
+          <div class="fg"><label class="fl">Password</label>
+            <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg><input class="fi" type="password" placeholder="Min. 8 characters" id="signup-pw"
+                autocomplete="new-password" oninput="pwStrength(this.value)" /><button class="eye" type="button"
+                onclick="togglePw('signup-pw',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg></button></div>
+            <div class="pw-str" id="pw-str" style="display:none">
+              <div class="pw-track">
+                <div class="pw-fill" id="pw-fill"></div>
+              </div><span id="pw-lbl">Weak</span>
+            </div>
+          </div>
+          <button class="btn primary full" id="signup-btn" onclick="doSignup()"><span class="bt">Create
+              account</span><span class="bl" style="display:none"><svg class="spin" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg></span></button>
+          <p class="auth-foot">Have an account? <a class="al" data-nav="login">Sign in →</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-dashboard">
+      <div class="dash">
+        <div class="dash-head">
+          <div>
+            <p class="sect-lbl">Overview</p>
+            <h2>Your polls</h2>
+          </div>
+          <button class="btn primary" data-nav="create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>New poll</button>
+        </div>
+        <div class="stats-grid">
+          <div class="sc">
+            <div class="sc-lbl">Total polls</div>
+            <div class="sc-val counter" data-target="6">0</div>
+            <div class="sc-d up">↑ 2 this week</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Total responses</div>
+            <div class="sc-val counter" data-target="1247">0</div>
+            <div class="sc-d up">↑ 189 today</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Active polls</div>
+            <div class="sc-val counter" data-target="3">0</div>
+            <div class="sc-d live"><span class="live-dot sm"></span>1 live now</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Avg. completion</div>
+            <div class="sc-val">82<span style="font-size:1.1rem">%</span></div>
+            <div class="sc-d up">↑ 4% vs last</div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-top">
+            <h3>All polls</h3>
+            <div class="iw" style="width:210px"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg><input class="fi sm" type="text" placeholder="Search polls…" oninput="filterPolls(this.value)" />
+            </div>
+          </div>
+          <div class="tw">
+            <table id="polls-tbl">
+              <thead>
+                <tr>
+                  <th>Poll</th>
+                  <th>Status</th>
+                  <th>Responses</th>
+                  <th>Questions</th>
+                  <th>Expires</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="polls-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-create">
+      <div class="create-wrap">
+        <div class="create-head">
+          <h2>Create poll</h2>
+          <p class="tm">Build and share your poll in minutes</p>
+        </div>
+        <div class="steps">
+          <div class="step active" id="sd1">
+            <div class="sc2">1</div><span>Setup</span>
+          </div>
+          <div class="step-line" id="sl1"></div>
+          <div class="step" id="sd2">
+            <div class="sc2">2</div><span>Questions</span>
+          </div>
+          <div class="step-line" id="sl2"></div>
+          <div class="step" id="sd3">
+            <div class="sc2">3</div><span>Publish</span>
+          </div>
+        </div>
+
+        <div id="cs1" class="create-step">
+          <div class="fc">
+            <h3>Poll details</h3>
+            <div class="fg"><label class="fl">Title <span class="req">*</span></label><input class="fi"
+                placeholder="Title of Pole" id="poll-title"
+                oninput="document.getElementById('tc').textContent=this.value.length" />
+              <div class="char-c"><span id="tc">0</span>/80</div>
+            </div>
+            <div class="fg"><label class="fl">Description <span class="opt">optional</span></label><textarea class="fi"
+                rows="2" placeholder="What is this poll about?" id="poll-desc"></textarea></div>
+            <div class="fg"><label class="fl">Opens at <span class="opt">optional</span></label>
+              <div class="dt-row">
+                <input class="fi dt-part" type="number" id="start-dd" placeholder="DD" min="1" max="31" maxlength="2"
+                  oninput="dtAutoTab(this,'start-mm',2)" />
+                <span class="dt-sep">/</span>
+                <input class="fi dt-part" type="number" id="start-mm" placeholder="MM" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'start-yyyy',2)" />
+                <span class="dt-sep">/</span>
+                <input class="fi dt-part wide" type="number" id="start-yyyy" placeholder="YYYY" min="2024" max="2099"
+                  maxlength="4" oninput="dtAutoTab(this,'start-hh',4)" />
+                <span class="dt-sep dt-gap"></span>
+                <input class="fi dt-part" type="number" id="start-hh" placeholder="HH" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'start-min',2)" />
+                <span class="dt-sep">:</span>
+                <input class="fi dt-part" type="number" id="start-min" placeholder="MM" min="0" max="59" maxlength="2"
+                  oninput="dtAutoTab(this,'start-ampm',2)" />
+                <select class="fi dt-ampm" id="start-ampm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg"><label class="fl">Expires at <span class="req">*</span></label>
+              <div class="dt-row">
+                <input class="fi dt-part" type="number" id="exp-dd" placeholder="DD" min="1" max="31" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-mm',2)" />
+                <span class="dt-sep">/</span>
+                <input class="fi dt-part" type="number" id="exp-mm" placeholder="MM" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-yyyy',2)" />
+                <span class="dt-sep">/</span>
+                <input class="fi dt-part wide" type="number" id="exp-yyyy" placeholder="YYYY" min="2024" max="2099"
+                  maxlength="4" oninput="dtAutoTab(this,'exp-hh',4)" />
+                <span class="dt-sep dt-gap"></span>
+                <input class="fi dt-part" type="number" id="exp-hh" placeholder="HH" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-min',2)" />
+                <span class="dt-sep">:</span>
+                <input class="fi dt-part" type="number" id="exp-min" placeholder="MM" min="0" max="59" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-ampm',2)" />
+                <select class="fi dt-ampm" id="exp-ampm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="fc">
+            <h3>Response settings</h3>
+            <p class="tm" style="font-size:.78rem;margin-bottom:1rem">Who can respond to this poll?</p>
+            <div class="tg">
+              <button type="button" class="mode-btn" id="mc-anon" onclick="selMode('anonymous')">
+                <span class="tci">🎭</span>
+                <span class="mode-btn-text"><span class="tct">Anonymous</span><span class="tcs">No login
+                    required</span></span>
+                <svg class="mode-check" id="ck-anon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="3">
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+              </button>
+              <button type="button" class="mode-btn" id="mc-auth" onclick="selMode('authenticated')">
+                <span class="tci">🔐</span>
+                <span class="mode-btn-text"><span class="tct">Authenticated</span><span class="tcs">Login
+                    required</span></span>
+                <svg class="mode-check hidden" id="ck-auth" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="3">
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+              </button>
+              <button type="button" class="mode-btn" id="mc-both" onclick="selMode('both')">
+                <span class="tci">🌐</span>
+                <span class="mode-btn-text"><span class="tct">Both</span><span class="tcs">Anyone can
+                    respond</span></span>
+                <svg class="mode-check hidden" id="ck-both" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="3">
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="sa"><button class="btn ghost" data-nav="dashboard">Cancel</button><button class="btn primary"
+              onclick="fwd(1)">Next: Questions <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" style="width:13px;height:13px">
+                <polyline points="9,18 15,12 9,6" />
+              </svg></button></div>
+        </div>
+
+        <div id="cs2" class="create-step" style="display:none">
+          <div class="fc">
+            <div class="fc-head">
+              <h3>Questions</h3>
+              <p class="tm" style="font-size:.78rem;margin-top:2px">Single-choice only</p>
+            </div>
+            <div id="q-container"></div>
+            <div class="add-q" onclick="addQ()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>Add question</div>
+          </div>
+          <div class="sa"><button class="btn ghost" onclick="back(2)"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px">
+                <polyline points="15,18 9,12 15,6" />
+              </svg> Back</button><button class="btn primary" onclick="fwd(2)">Preview <svg viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px">
+                <polyline points="9,18 15,12 9,6" />
+              </svg></button></div>
+        </div>
+
+        <div id="cs3" class="create-step" style="display:none">
+          <div class="fc">
+            <h3>Review &amp; publish</h3>
+            <div class="prev-sum" id="prev-sum"></div>
+            <div class="pub-notice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9,11 12,14 22,4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>Poll goes live immediately after publishing</div>
+          </div>
+          <div class="sa"><button class="btn ghost" onclick="back(3)"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px">
+                <polyline points="15,18 9,12 15,6" />
+              </svg> Back</button><button class="btn primary" onclick="publishPoll()"><svg viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13" />
+                <polygon points="22,2 15,22 11,13 2,9" />
+              </svg>Publish poll</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-poll-public">
+      <div class="poll-wrap">
+        <div class="poll-top">
+          <div class="poll-badges"><span class="badge live-badge"><span class="bdot pulse"></span>Live</span><span
+              class="badge muted-badge">🎭 Anonymous</span><span class="badge muted-badge expiry-chip"><svg
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12,7 12,12 15,15" />
+              </svg><span id="poll-exp">2h 14m left</span></span></div>
+          <h2 class="poll-title">Team Retrospective Q2</h2>
+          <p class="poll-desc">Share honest feedback to help the team improve. All responses are anonymous.</p>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-meta"><span id="prog-txt">0 of 4 answered</span><span id="prog-pct" class="mono">0%</span>
+          </div>
+          <div class="prog-track">
+            <div class="prog-fill" id="prog-fill"></div>
+          </div>
+        </div>
+        <div id="poll-qs">
+          <div class="qc" data-q="q1" data-m="true">
+            <div class="qh"><span class="qn">01</span><span class="req-tag">Required</span></div>
+            <div class="qt">What slowed us down the most this sprint?</div>
+            <div class="qo">
+              <div class="ro" onclick="pick(this,'q1')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Too many meetings</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q1')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Unclear requirements</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q1')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Context switching</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q1')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Technical debt</span>
+              </div>
+            </div>
+          </div>
+          <div class="qc" data-q="q2" data-m="true">
+            <div class="qh"><span class="qn">02</span><span class="req-tag">Required</span></div>
+            <div class="qt">How would you rate team communication?</div>
+            <div class="qo">
+              <div class="ro" onclick="pick(this,'q2')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Excellent — well coordinated</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q2')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Good — minor gaps</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q2')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Fair — needs improvement</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q2')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Poor — frequent misalignment</span>
+              </div>
+            </div>
+          </div>
+          <div class="qc" data-q="q3" data-m="false">
+            <div class="qh"><span class="qn">03</span><span class="opt-tag">Optional</span></div>
+            <div class="qt">Which area should we prioritize next sprint?</div>
+            <div class="qo">
+              <div class="ro" onclick="pick(this,'q3')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Feature development</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q3')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Bug fixes &amp; stability</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q3')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Technical debt paydown</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q3')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Documentation &amp; testing</span>
+              </div>
+            </div>
+          </div>
+          <div class="qc" data-q="q4" data-m="false">
+            <div class="qh"><span class="qn">04</span><span class="opt-tag">Optional</span></div>
+            <div class="qt">Overall, how satisfied are you with this sprint?</div>
+            <div class="qo">
+              <div class="ro" onclick="pick(this,'q4')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Very satisfied</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q4')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Satisfied</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q4')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Neutral</span>
+              </div>
+              <div class="ro" onclick="pick(this,'q4')">
+                <div class="rr">
+                  <div class="ri"></div>
+                </div><span>Dissatisfied</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="anon-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>Your response is completely anonymous.</div>
+          <div class="val-alert" id="val-alert" style="display:none"><svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>Please answer all required questions.</div>
+          <button class="btn primary full lg" onclick="submitPoll()">Submit response</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-analytics">
+      <div class="analytics">
+        <div class="an-head">
+          <div class="an-left"><button class="btn ghost sm" data-nav="dashboard"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" style="width:13px;height:13px">
+                <polyline points="15,18 9,12 15,6" />
+              </svg>Dashboard</button>
+            <div style="margin-top:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <h2 class="analytics-title">Team Retrospective Q2</h2><span class="badge live-badge"><span
+                    class="bdot pulse"></span>Live</span>
+              </div>
+              <p class="tm analytics-subtitle" style="margin-top:3px;font-size:.85rem">Sprint feedback · anonymous · 4
+                questions</p>
+            </div>
+          </div>
+          <div class=TOTAL RESPONSESan-right"><button class="btn ghost sm" onclick="openShare()"><svg
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>Share</button><button class="btn primary sm" onclick="publishResults()">Publish results</button>
+          </div>
+        </div>
+        <div class="ws-bar">
+          <div class="ws-dot"></div><span class="tm">WebSocket connected</span><span class="ws-cnt"><span
+              id="ws-cnt">127</span> responses</span><span class="ws-ep mono">ws://localhost:3000</span><span
+            class="ws-new" id="ws-new" style="display:none">+<span id="ws-n">1</span> new</span>
+        </div>
+        <div class="stats-grid">
+          <div class="sc">
+            <div class="sc-lbl">Total responses</div>
+            <div class="sc-val" id="a-total">127</div>
+            <div class="sc-d up">↑ 14 last hour</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Completion rate</div>
+            <div class="sc-val">84%</div>
+            <div class="sc-d up">↑ 2% vs avg</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Avg. time</div>
+            <div class="sc-val mono" style="font-size:1.3rem">1m 47s</div>
+            <div class="sc-d neutral">median</div>
+          </div>
+          <div class="sc">
+            <div class="sc-lbl">Expires</div>
+            <div class="sc-val mono" id="a-expiry" style="font-size:1.2rem">2h 14m</div>
+            <div class="sc-d live"><span class="live-dot sm"></span>Active</div>
+          </div>
+        </div>
+
+        <div id="analytics-questions"></div>
+
+      </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-success">
+      <div class="success-scene">
+        <div class="success-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20,6 9,17 4,12" />
+          </svg></div>
+        <h2>Response submitted!</h2>
+        <p class="tm">Thanks for sharing your feedback. Recorded anonymously.</p>
+        <div class="suc-acts"><button class="btn ghost" data-nav="landing">Back to home</button><button
+            class="btn primary" data-nav="signup">Create your own poll →</button></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-results">
+      <div class="results-wrap">
+        <div class="res-head"><span class="badge pub-badge">Results published</span>
+          <h2>Team Retrospective Q2</h2>
+          <p class="tm">127 total responses · Sprint feedback · Closed</p>
+        </div>
+        <div class="aq">
+          <div class="aq-h">
+            <div>
+              <div class="aq-m">Question 1</div>
+              <div class="aq-t">What slowed us down the most this sprint?</div>
+            </div>
+          </div>
+          <div class="aq-bars">
+            <div class="ab"><span class="abl">Too many meetings</span>
+              <div class="abt">
+                <div class="abf hi ab-anim" data-w="42"></div>
+              </div><span class="abv mono">42%</span>
+            </div>
+            <div class="ab"><span class="abl">Unclear requirements</span>
+              <div class="abt">
+                <div class="abf md ab-anim" data-w="31"></div>
+              </div><span class="abv mono">31%</span>
+            </div>
+            <div class="ab"><span class="abl">Context switching</span>
+              <div class="abt">
+                <div class="abf lo ab-anim" data-w="18"></div>
+              </div><span class="abv mono">18%</span>
+            </div>
+            <div class="ab"><span class="abl">Technical debt</span>
+              <div class="abt">
+                <div class="abf dim ab-anim" data-w="9"></div>
+              </div><span class="abv mono">9%</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:2rem"><button class="btn primary lg" data-nav="signup">Create your own
+            poll with Voxly →</button></div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeShare()">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Share poll</h3><button class="modal-close" onclick="closeShare()"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg></button>
+      </div>
+      <p class="tm">Copy the link and share. Anyone can respond.</p>
+      <div class="link-row">
+        <div class="link-box mono">https://voxly.io/p/retro-q2-xK3m</div><button class="btn primary sm"
+          onclick="copyLink()">Copy</button>
+      </div>
+      <div class="modal-info"><span>🎭 Anonymous</span><span>·</span><span>Expires in 2h 14m</span></div>
+      <div class="modal-acts"><button class="btn ghost" onclick="closeShare()">Close</button><button class="btn primary"
+          data-nav="poll-public" onclick="closeShare()">Preview →</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20,6 9,17 4,12" />
+    </svg><span id="toast-msg">Done!</span></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
