@@ -1,4 +1,22 @@
 
+async function loadPublicPoll(pollId) {
+  try {
+    const r = await fetch('/api/polls/' + pollId);
+    const d = await r.json();
+    if (!r.ok) { showToast('Poll not found or expired'); return; }
+    if (d.published) {
+      S.selectedPoll = { id: d.id, desc: d.desc, mode: d.mode };
+      navigate('results', false);
+      return;
+    }
+    document.querySelector('.poll-title').textContent = d.title;
+    document.querySelector('.poll-desc').textContent = d.desc || '';
+    S.currentPublicPoll = d;
+    navigate('poll-public', false);
+    window.history.replaceState({}, '', '/?poll=' + pollId);
+  } catch(e) { showToast('Failed to load poll'); }
+}
+
 async function loadResults() {
   const poll = S.selectedPoll;
   if (!poll || !poll.id) { triggerBars(); return; }
@@ -657,9 +675,17 @@ function initScrollReveal() {
   });
 }
 
-function openShare() { document.getElementById('share-modal').classList.add('open') }
+function openShare() {
+  const poll = S.selectedPoll;
+  const link = poll && poll.id
+    ? window.location.origin + '/?poll=' + poll.id
+    : window.location.origin;
+  document.getElementById('share-link-display').textContent = link;
+  S.currentShareLink = link;
+  document.getElementById('share-modal').classList.add('open');
+}
 function closeShare() { document.getElementById('share-modal').classList.remove('open') }
-function copyLink() { navigator.clipboard.writeText('https://voxly.io/p/retro-q2-xK3m').catch(() => { }); showToast('Link copied! 📋') }
+function copyLink() { navigator.clipboard.writeText(S.currentShareLink || window.location.origin).catch(() => {}); showToast('Link copied! 📋') }
 async function publishResults() {
   const poll = S.selectedPoll;
   if (!poll || !poll.id) { showToast('No poll selected'); return; }
