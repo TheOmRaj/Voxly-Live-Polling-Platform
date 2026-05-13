@@ -19,7 +19,7 @@ function optionalAuth(req, res, next) {
     try {
       const payload = jwt.verify(auth.split(' ')[1], SECRET);
       req.user = { id: payload.sub, name: payload.name, email: payload.email };
-    } catch {}
+    } catch { }
   }
   next();
 }

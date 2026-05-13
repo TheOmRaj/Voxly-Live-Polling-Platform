@@ -14,7 +14,7 @@ async function loadPublicPoll(pollId) {
     S.currentPublicPoll = d;
     navigate('poll-public', false);
     window.history.replaceState({}, '', '/?poll=' + pollId);
-  } catch(e) { showToast('Failed to load poll'); }
+  } catch (e) { showToast('Failed to load poll'); }
 }
 
 async function loadResults() {
@@ -31,7 +31,7 @@ async function loadResults() {
     const wrap = document.querySelector('.results-wrap');
     wrap.querySelectorAll('.aq').forEach(e => e.remove());
     const btn = wrap.querySelector('div[style]') || null;
-    const colors = ['hi','md','lo','dim','hi','md'];
+    const colors = ['hi', 'md', 'lo', 'dim', 'hi', 'md'];
     d.questions.forEach((q, i) => {
       const barsHtml = q.options.map((o, j) => {
         const pct = o.percentage || 0;
@@ -39,11 +39,11 @@ async function loadResults() {
       }).join('');
       const div = document.createElement('div');
       div.className = 'aq';
-      div.innerHTML = '<div class="aq-h"><div><div class="aq-m">Question ' + (i+1) + '</div><div class="aq-t">' + q.text + '</div></div></div><div class="aq-bars">' + barsHtml + '</div>';
+      div.innerHTML = '<div class="aq-h"><div><div class="aq-m">Question ' + (i + 1) + '</div><div class="aq-t">' + q.text + '</div></div></div><div class="aq-bars">' + barsHtml + '</div>';
       if (btn) wrap.insertBefore(div, btn);
       else wrap.appendChild(div);
     });
-  } catch(e) { console.error('Results error:', e); triggerBars(); }
+  } catch (e) { console.error('Results error:', e); triggerBars(); }
 }
 
 async function loadAnalytics() {
@@ -74,14 +74,14 @@ async function loadAnalytics() {
     wrap.innerHTML = '';
     d.questions.forEach((q, i) => {
       const total = q.totalAnswers || 0;
-      const colors = ['hi','md','lo','dim','hi','md'];
+      const colors = ['hi', 'md', 'lo', 'dim', 'hi', 'md'];
       const barsHtml = q.options.map((o, j) => {
         const pct = o.percentage || 0;
-        return `<div class="ab"><span class="abl">${o.text}</span><div class="abt"><div class="abf ${colors[j%colors.length]}" style="width:${pct}%"></div></div><span class="abv mono">${o.count} · ${pct}%</span></div>`;
+        return `<div class="ab"><span class="abl">${o.text}</span><div class="abt"><div class="abf ${colors[j % colors.length]}" style="width:${pct}%"></div></div><span class="abv mono">${o.count} · ${pct}%</span></div>`;
       }).join('');
-      wrap.innerHTML += `<div class="aq"><div class="aq-h"><div><div class="aq-m">Question ${i+1} · ${q.mandatory?'mandatory':'optional'}</div><div class="aq-t">${q.text}</div></div><span class="aq-c mono">${total} resp.</span></div><div class="aq-bars">${barsHtml}</div></div>`;
+      wrap.innerHTML += `<div class="aq"><div class="aq-h"><div><div class="aq-m">Question ${i + 1} · ${q.mandatory ? 'mandatory' : 'optional'}</div><div class="aq-t">${q.text}</div></div><span class="aq-c mono">${total} resp.</span></div><div class="aq-bars">${barsHtml}</div></div>`;
     });
-  } catch(e) { console.error('Analytics error:', e); triggerBars(); }
+  } catch (e) { console.error('Analytics error:', e); triggerBars(); }
 }
 
 function dtAutoTab(el, nextId, maxLen) {
@@ -92,16 +92,16 @@ function dtAutoTab(el, nextId, maxLen) {
 }
 
 function getDateFromInputs(prefix) {
-  const dd = document.getElementById(prefix+'-dd')?.value.padStart(2,'0');
-  const mm = document.getElementById(prefix+'-mm')?.value.padStart(2,'0');
-  const yyyy = document.getElementById(prefix+'-yyyy')?.value;
-  let hh = parseInt(document.getElementById(prefix+'-hh')?.value) || 12;
-  const min = document.getElementById(prefix+'-min')?.value.padStart(2,'0') || '00';
-  const ampm = document.getElementById(prefix+'-ampm')?.value;
+  const dd = document.getElementById(prefix + '-dd')?.value.padStart(2, '0');
+  const mm = document.getElementById(prefix + '-mm')?.value.padStart(2, '0');
+  const yyyy = document.getElementById(prefix + '-yyyy')?.value;
+  let hh = parseInt(document.getElementById(prefix + '-hh')?.value) || 12;
+  const min = document.getElementById(prefix + '-min')?.value.padStart(2, '0') || '00';
+  const ampm = document.getElementById(prefix + '-ampm')?.value;
   if (ampm === 'PM' && hh !== 12) hh += 12;
   if (ampm === 'AM' && hh === 12) hh = 0;
   if (!dd || !mm || !yyyy || yyyy.length < 4) return null;
-  return new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2,'0')}:${min}:00`);
+  return new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2, '0')}:${min}:00`);
 }
 const S = {
   user: null, theme: localStorage.getItem('theme') || 'dark', answers: {}, polls: [{ id: 'p1', title: 'Team Retrospective Q2', desc: 'Sprint feedback', mode: 'anonymous', status: 'live', responses: 127, questions: 4, expiry: '2h 14m' }, { id: 'p2', title: 'Product Feature Priorities', desc: 'User research', mode: 'authenticated', status: 'active', responses: 89, questions: 6, expiry: '3d 7h' }, { id: 'p3', title: 'Onboarding UX Survey', desc: 'New user feedback', mode: 'anonymous', status: 'active', responses: 341, questions: 5, expiry: '1d 20h' }, { id: 'p4', title: 'Q1 Engineering Pulse', desc: 'Internal', mode: 'anonymous', status: 'published', responses: 512, questions: 7, expiry: 'Ended' }, { id: 'p5', title: 'Design System Feedback', desc: 'Design team', mode: 'authenticated', status: 'expired', responses: 178, questions: 4, expiry: 'Ended' }],
@@ -116,8 +116,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mc-auth').addEventListener('click', () => selMode('authenticated'));
   document.getElementById('mc-both').addEventListener('click', () => selMode('both'));
   document.getElementById('theme-toggle').addEventListener('click', () => { applyTheme(S.theme === 'dark' ? 'light' : 'dark'); showToast(S.theme === 'light' ? '☀️ Light mode' : '🌙 Dark mode') });
-  document.getElementById('login-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin() });
-  document.getElementById('signup-pw').addEventListener('keydown', e => { if(e.key==='Enter') doSignup() });
+  document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() });
+  document.getElementById('signup-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doSignup() });
   initScrollReveal();
   animateHeroStats();
   startLiveCounter();
@@ -306,7 +306,7 @@ function resetCreatePoll() {
   document.getElementById('poll-title').value = '';
   document.getElementById('poll-desc').value = '';
   document.getElementById('tc').textContent = '0';
-  ['exp-dd','exp-mm','exp-yyyy','exp-hh','exp-min','start-dd','start-mm','start-yyyy','start-hh','start-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['exp-dd', 'exp-mm', 'exp-yyyy', 'exp-hh', 'exp-min', 'start-dd', 'start-mm', 'start-yyyy', 'start-hh', 'start-min'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' });
 
 
   const qContainer = document.getElementById('q-container');
@@ -431,7 +431,7 @@ async function publishPoll() {
     if (!r.ok) throw new Error(d.error || 'Failed to publish');
     showToast('Poll published! 🚀');
     setTimeout(async () => { await fetchAndRenderPolls(); openShare(); navigate('analytics'); }, 600);
-  } catch(e) {
+  } catch (e) {
     showToast('Error: ' + e.message);
   }
 }
@@ -454,7 +454,7 @@ async function fetchAndRenderPolls() {
         expiry: p.expiry ? new Date(p.expiry).toLocaleDateString() : '—'
       }));
     }
-  } catch(e) {}
+  } catch (e) { }
   renderPolls();
 }
 
@@ -464,7 +464,7 @@ function renderPolls(filter = '') {
   tbody.innerHTML = '';
   list.forEach(p => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><div class="pn">${p.title}</div><div class="pm">${p.desc} · ${p.mode}</div></td><td>${sBadge(p.status)}</td><td class="mono">${p.responses.toLocaleString()}</td><td class="mono">${Array.isArray(p.questions)?p.questions.length:p.questions}</td><td class="mono" style="font-size:.76rem;color:var(--text3)">${p.expiry}</td><td><div class="abts">${sActions(p)}</div></td>`;
+    tr.innerHTML = `<td><div class="pn">${p.title}</div><div class="pm">${p.desc} · ${p.mode}</div></td><td>${sBadge(p.status)}</td><td class="mono">${p.responses.toLocaleString()}</td><td class="mono">${Array.isArray(p.questions) ? p.questions.length : p.questions}</td><td class="mono" style="font-size:.76rem;color:var(--text3)">${p.expiry}</td><td><div class="abts">${sActions(p)}</div></td>`;
     tr.addEventListener('click', () => {
       S.selectedPoll = p;
       renderAnalytics();
@@ -685,7 +685,7 @@ function openShare() {
   document.getElementById('share-modal').classList.add('open');
 }
 function closeShare() { document.getElementById('share-modal').classList.remove('open') }
-function copyLink() { navigator.clipboard.writeText(S.currentShareLink || window.location.origin).catch(() => {}); showToast('Link copied! 📋') }
+function copyLink() { navigator.clipboard.writeText(S.currentShareLink || window.location.origin).catch(() => { }); showToast('Link copied! 📋') }
 async function publishResults() {
   const poll = S.selectedPoll;
   if (!poll || !poll.id) { showToast('No poll selected'); return; }
@@ -698,7 +698,7 @@ async function publishResults() {
     if (!r.ok) throw new Error('Failed to publish');
     showToast('Results published publicly 🎉');
     setTimeout(() => navigate('results'), 500);
-  } catch(e) { showToast('Error: ' + e.message); }
+  } catch (e) { showToast('Error: ' + e.message); }
 }
 
 function showToast(msg) {

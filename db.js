@@ -73,7 +73,7 @@ const Polls = {
       `INSERT INTO polls (id, user_id, title, description, mode, expiry, starts_at, questions)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [id, userId, data.title, data.desc || '', data.mode || 'anonymous',
-       new Date(data.expiry), data.startsAt ? new Date(data.startsAt) : null, JSON.stringify(questions)]
+        new Date(data.expiry), data.startsAt ? new Date(data.startsAt) : null, JSON.stringify(questions)]
     );
     const poll = rows[0];
     poll.userId = poll.user_id;
@@ -90,8 +90,10 @@ const Polls = {
   },
   async findByUserId(userId) {
     const { rows } = await pool.query('SELECT * FROM polls WHERE user_id=$1 ORDER BY created_at DESC', [userId]);
-    return rows.map(p => { p.userId = p.user_id;
-    p.desc = p.description; if (typeof p.questions === 'string') p.questions = JSON.parse(p.questions); return p; });
+    return rows.map(p => {
+      p.userId = p.user_id;
+      p.desc = p.description; if (typeof p.questions === 'string') p.questions = JSON.parse(p.questions); return p;
+    });
   },
   async publish(id) {
     const { rows } = await pool.query("UPDATE polls SET published=TRUE, status='published' WHERE id=$1 RETURNING *", [id]);

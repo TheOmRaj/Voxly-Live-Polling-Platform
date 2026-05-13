@@ -32,7 +32,7 @@ app.post('/api/auth/register', async (req, res) => {
     const user = await Users.create(name, email, hashed);
     const token = signAccessToken(user);
     res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email } });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -46,7 +46,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
     const token = signAccessToken(user);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
@@ -54,7 +54,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     const user = await Users.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user: { id: user.id, name: user.name, email: user.email } });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/auth/oidc/verify', async (req, res) => {
@@ -69,7 +69,7 @@ app.post('/api/auth/oidc/verify', async (req, res) => {
     if (!user) user = await Users.create(name, profile.email, 'oidc-no-password');
     const voxlyToken = signAccessToken(user);
     res.json({ token: voxlyToken, user: { id: user.id, name: user.name, email: user.email } });
-  } catch(e) { res.status(400).json({ error: 'OIDC verification failed' }); }
+  } catch (e) { res.status(400).json({ error: 'OIDC verification failed' }); }
 });
 
 app.get('/api/polls', authenticate, async (req, res) => {
@@ -84,7 +84,7 @@ app.get('/api/polls', authenticate, async (req, res) => {
       expiry: p.expiry,
     })));
     res.json({ polls: result });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/polls', authenticate, async (req, res) => {
@@ -95,7 +95,7 @@ app.post('/api/polls', authenticate, async (req, res) => {
     if (!questions || questions.length === 0) return res.status(400).json({ error: 'At least one question required' });
     const poll = await Polls.create(req.user.id, { title, desc, mode, expiry, questions, startsAt });
     res.status(201).json({ id: poll.id, message: 'Poll created' });
-  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/polls/:id', optionalAuth, async (req, res) => {
@@ -110,7 +110,7 @@ app.get('/api/polls/:id', optionalAuth, async (req, res) => {
       questions: poll.questions.map(q => ({ id: q.id, text: q.text, mandatory: q.mandatory, options: q.options.map(o => ({ id: o.id, text: o.text })) })),
       responseCount: await Responses.countByPoll(poll.id),
     });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/polls/:id/responses', optionalAuth, async (req, res) => {
@@ -131,12 +131,12 @@ app.post('/api/polls/:id/responses', optionalAuth, async (req, res) => {
     const response = await Responses.create(poll.id, req.user?.id, answers, isAnon);
     const totalResponses = await Responses.countByPoll(poll.id);
     const updatedPoll = await Polls.findById(poll.id);
-    io.to('poll:'+poll.id).emit('response:new', {
+    io.to('poll:' + poll.id).emit('response:new', {
       pollId: poll.id, totalResponses,
       questions: updatedPoll.questions.map(q => ({ id: q.id, options: q.options.map(o => ({ id: o.id, text: o.text, count: o.count })) })),
     });
     res.status(201).json({ id: response.id, message: 'Response recorded' });
-  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/polls/:id/analytics', authenticate, async (req, res) => {
@@ -146,12 +146,14 @@ app.get('/api/polls/:id/analytics', authenticate, async (req, res) => {
     if (poll.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     const totalResponses = await Responses.countByPoll(poll.id);
     const questions = poll.questions.map(q => {
-      const totalForQ = q.options.reduce((s,o) => s + o.count, 0);
-      return { id: q.id, text: q.text, mandatory: q.mandatory, totalAnswers: totalForQ,
-        options: q.options.map(o => ({ id: o.id, text: o.text, count: o.count, percentage: totalForQ > 0 ? Math.round((o.count/totalForQ)*100) : 0 })) };
+      const totalForQ = q.options.reduce((s, o) => s + o.count, 0);
+      return {
+        id: q.id, text: q.text, mandatory: q.mandatory, totalAnswers: totalForQ,
+        options: q.options.map(o => ({ id: o.id, text: o.text, count: o.count, percentage: totalForQ > 0 ? Math.round((o.count / totalForQ) * 100) : 0 }))
+      };
     });
     res.json({ pollId: poll.id, title: poll.title, totalResponses, status: poll.status, expiry: poll.expiry, questions });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.patch('/api/polls/:id/publish', authenticate, async (req, res) => {
@@ -160,9 +162,9 @@ app.patch('/api/polls/:id/publish', authenticate, async (req, res) => {
     if (!poll) return res.status(404).json({ error: 'Poll not found' });
     if (poll.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     await Polls.publish(poll.id);
-    io.to('poll:'+poll.id).emit('poll:published', { pollId: poll.id });
+    io.to('poll:' + poll.id).emit('poll:published', { pollId: poll.id });
     res.json({ message: 'Results published' });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/polls/:id/results', optionalAuth, async (req, res) => {
@@ -172,20 +174,20 @@ app.get('/api/polls/:id/results', optionalAuth, async (req, res) => {
     if (!poll.published) return res.status(403).json({ error: 'Results not published yet' });
     const totalResponses = await Responses.countByPoll(poll.id);
     const questions = poll.questions.map(q => {
-      const totalForQ = q.options.reduce((s,o) => s + o.count, 0);
-      return { id: q.id, text: q.text, options: q.options.map(o => ({ id: o.id, text: o.text, count: o.count, percentage: totalForQ > 0 ? Math.round((o.count/totalForQ)*100) : 0 })) };
+      const totalForQ = q.options.reduce((s, o) => s + o.count, 0);
+      return { id: q.id, text: q.text, options: q.options.map(o => ({ id: o.id, text: o.text, count: o.count, percentage: totalForQ > 0 ? Math.round((o.count / totalForQ) * 100) : 0 })) };
     });
     res.json({ pollId: poll.id, title: poll.title, desc: poll.desc, totalResponses, questions });
-  } catch(e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
+  } catch (e) { console.error('API Error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 io.on('connection', (socket) => {
   socket.on('join:poll', async (pollId) => {
-    socket.join('poll:'+pollId);
-    const poll = await Polls.findById(pollId).catch(()=>null);
+    socket.join('poll:' + pollId);
+    const poll = await Polls.findById(pollId).catch(() => null);
     if (poll) socket.emit('poll:state', { pollId, totalResponses: await Responses.countByPoll(pollId), status: poll.status, expiry: poll.expiry });
   });
-  socket.on('leave:poll', (pollId) => socket.leave('poll:'+pollId));
+  socket.on('leave:poll', (pollId) => socket.leave('poll:' + pollId));
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, './public/index.html')));
