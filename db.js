@@ -13,9 +13,12 @@ async function init() {
       name VARCHAR(100) NOT NULL,
       email VARCHAR(322) UNIQUE NOT NULL,
       password TEXT NOT NULL,
+      avatar TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Idempotent migration for existing deployments
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS polls (
       id UUID PRIMARY KEY,
@@ -36,10 +39,13 @@ async function init() {
       id UUID PRIMARY KEY,
       poll_id UUID NOT NULL,
       user_id UUID,
+      fingerprint TEXT,
       answers JSONB NOT NULL,
       submitted_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Idempotent migration for existing deployments
+  await pool.query(`ALTER TABLE responses ADD COLUMN IF NOT EXISTS fingerprint TEXT`);
   console.log('Database tables ready');
 }
 
@@ -60,6 +66,37 @@ const Users = {
     const { rows } = await pool.query('SELECT * FROM users WHERE id=$1 LIMIT 1', [id]);
     return rows[0] || null;
   },
+  async update(id, { name, email }) {
+    const sets = []; const vals = []; let i = 1;
+    if (name !== undefined) { sets.push(`name=$${i++}`); vals.push(name); }
+    if (email !== undefined) { sets.push(`email=$${i++}`); vals.push(email); }
+    if (!sets.length) return await Users.findById(id);
+    vals.push(id);
+    const { rows } = await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, vals);
+    return rows[0];
+  },
+  async updatePassword(id, hashedPassword) {
+    await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hashedPassword, id]);
+  },
+  async updateAvatar(id, avatar) {
+    await pool.query('UPDATE users SET avatar=$1 WHERE id=$2', [avatar, id]);
+  },
+  async delete(id) {
+    // Cascade: responses → polls → user. Wrapped in a transaction so a partial failure rolls back.
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM responses WHERE poll_id IN (SELECT id FROM polls WHERE user_id=$1)', [id]);
+      await client.query('DELETE FROM polls WHERE user_id=$1', [id]);
+      await client.query('DELETE FROM users WHERE id=$1', [id]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  },
 };
 
 const Polls = {
@@ -73,7 +110,7 @@ const Polls = {
       `INSERT INTO polls (id, user_id, title, description, mode, expiry, starts_at, questions)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [id, userId, data.title, data.desc || '', data.mode || 'anonymous',
-        new Date(data.expiry), data.startsAt ? new Date(data.startsAt) : null, JSON.stringify(questions)]
+       new Date(data.expiry), data.startsAt ? new Date(data.startsAt) : null, JSON.stringify(questions)]
     );
     const poll = rows[0];
     poll.userId = poll.user_id;
@@ -90,10 +127,8 @@ const Polls = {
   },
   async findByUserId(userId) {
     const { rows } = await pool.query('SELECT * FROM polls WHERE user_id=$1 ORDER BY created_at DESC', [userId]);
-    return rows.map(p => {
-      p.userId = p.user_id;
-      p.desc = p.description; if (typeof p.questions === 'string') p.questions = JSON.parse(p.questions); return p;
-    });
+    return rows.map(p => { p.userId = p.user_id;
+    p.desc = p.description; if (typeof p.questions === 'string') p.questions = JSON.parse(p.questions); return p; });
   },
   async publish(id) {
     const { rows } = await pool.query("UPDATE polls SET published=TRUE, status='published' WHERE id=$1 RETURNING *", [id]);
@@ -108,11 +143,11 @@ const Polls = {
 };
 
 const Responses = {
-  async create(pollId, userId, answers, isAnonymous) {
+  async create(pollId, userId, answers, isAnonymous, fingerprint) {
     const id = uuid();
     const { rows } = await pool.query(
-      'INSERT INTO responses (id, poll_id, user_id, answers) VALUES ($1,$2,$3,$4) RETURNING *',
-      [id, pollId, isAnonymous ? null : userId, JSON.stringify(answers)]
+      'INSERT INTO responses (id, poll_id, user_id, fingerprint, answers) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [id, pollId, isAnonymous ? null : userId, fingerprint || null, JSON.stringify(answers)]
     );
     const poll = await Polls.findById(pollId);
     if (poll) {
@@ -135,6 +170,11 @@ const Responses = {
   async hasResponded(pollId, userId) {
     if (!userId) return false;
     const { rows } = await pool.query('SELECT 1 FROM responses WHERE poll_id=$1 AND user_id=$2 LIMIT 1', [pollId, userId]);
+    return rows.length > 0;
+  },
+  async hasRespondedAnon(pollId, fingerprint) {
+    if (!fingerprint) return false;
+    const { rows } = await pool.query('SELECT 1 FROM responses WHERE poll_id=$1 AND user_id IS NULL AND fingerprint=$2 LIMIT 1', [pollId, fingerprint]);
     return rows.length > 0;
   },
 };

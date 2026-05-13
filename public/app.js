@@ -1,61 +1,167 @@
 
 async function loadPublicPoll(pollId) {
   try {
-    const r = await fetch('/api/polls/' + pollId);
+    const r = await fetch('/api/polls/' + pollId, {
+      headers: localStorage.getItem('token') ? { 'Authorization': 'Bearer ' + localStorage.getItem('token') } : {}
+    });
     const d = await r.json();
-    if (!r.ok) { showToast('Poll not found or expired'); return; }
+    if (r.status === 401) {
+      // Authenticated-mode poll, user not signed in. Park the poll id and route to login.
+      sessionStorage.setItem('pendingPoll', pollId);
+      showToast('Sign in to respond to this poll');
+      navigate('login', false);
+      return;
+    }
+    if (!r.ok) { showToast(d.error || 'Poll not found or expired'); navigate('landing', false); return; }
     if (d.published) {
       S.selectedPoll = { id: d.id, desc: d.desc, mode: d.mode };
       navigate('results', false);
+      window.history.replaceState({}, '', '/?poll=' + pollId);
       return;
     }
-    document.querySelector('.poll-title').textContent = d.title;
-    document.querySelector('.poll-desc').textContent = d.desc || '';
+    renderPublicPoll(d);
     S.currentPublicPoll = d;
+    S.answers = {};
     navigate('poll-public', false);
     window.history.replaceState({}, '', '/?poll=' + pollId);
-  } catch (e) { showToast('Failed to load poll'); }
+  } catch(e) { showToast('Failed to load poll'); navigate('landing', false); }
+}
+
+function renderPublicPoll(d) {
+  const titleEl = document.querySelector('.poll-title');
+  const descEl = document.querySelector('.poll-desc');
+  if (titleEl) titleEl.textContent = d.title || '';
+  if (descEl) descEl.textContent = d.desc || d.description || '';
+
+  // Mode badge
+  const badgesWrap = document.querySelector('.poll-badges');
+  if (badgesWrap) {
+    const modeBadge = badgesWrap.querySelectorAll('.badge')[1];
+    if (modeBadge) {
+      const mode = d.mode || 'anonymous';
+      const modeLabels = { anonymous: '🎭 Anonymous', authenticated: '🔐 Authenticated', both: '👥 Anonymous or signed in' };
+      modeBadge.textContent = modeLabels[mode] || modeLabels.anonymous;
+    }
+  }
+
+  // Expiry chip
+  const expEl = document.getElementById('poll-exp');
+  if (expEl) expEl.textContent = d.expiry ? humanExpiry(d.expiry) : 'No expiry';
+
+  // Anon-note (the footer text inside sub-card) — make it match mode
+  const anonNote = document.querySelector('.anon-note');
+  if (anonNote) {
+    const txt = d.mode === 'authenticated' ? 'Your response is linked to your account.'
+              : d.mode === 'both' ? 'You can respond anonymously or signed in.'
+              : 'Your response is completely anonymous.';
+    // Keep the icon, replace the trailing text node
+    const iconHtml = anonNote.querySelector('svg')?.outerHTML || '';
+    anonNote.innerHTML = iconHtml + txt;
+  }
+
+  // Questions
+  const qWrap = document.getElementById('poll-qs');
+  if (!qWrap) return;
+  const questions = d.questions || [];
+  qWrap.innerHTML = questions.map((q, i) => {
+    const qid = 'q' + (i + 1);
+    const num = String(i + 1).padStart(2, '0');
+    const isReq = q.mandatory === true || q.required === true;
+    const tagHtml = isReq ? '<span class="req-tag">Required</span>' : '<span class="opt-tag">Optional</span>';
+    const optsHtml = (q.options || []).map(o => {
+      const text = (typeof o === 'string') ? o : (o.text || o.label || '');
+      const oid = (typeof o === 'object' && o !== null) ? (o.id || '') : '';
+      return `<div class="ro" data-oid="${escapeHtml(oid)}" onclick="pick(this,'${qid}')"><div class="rr"><div class="ri"></div></div><span>${escapeHtml(text)}</span></div>`;
+    }).join('');
+    return `<div class="qc" data-q="${qid}" data-qid="${escapeHtml(q.id || '')}" data-m="${isReq}"><div class="qh"><span class="qn">${num}</span>${tagHtml}</div><div class="qt">${escapeHtml(q.text || q.title || '')}</div><div class="qo">${optsHtml}</div></div>`;
+  }).join('');
+
+  // Progress
+  const progTxt = document.getElementById('prog-txt');
+  const progPct = document.getElementById('prog-pct');
+  const progFill = document.getElementById('prog-fill');
+  if (progTxt) progTxt.textContent = `0 of ${questions.length} answered`;
+  if (progPct) progPct.textContent = '0%';
+  if (progFill) progFill.style.width = '0%';
+
+  // Hide any stale validation alert
+  const v = document.getElementById('val-alert'); if (v) v.style.display = 'none';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function humanExpiry(iso) {
+  const target = new Date(iso);
+  const ms = target.getTime() - Date.now();
+  if (isNaN(ms)) return 'No expiry';
+  if (ms <= 0) return 'Expired';
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d > 7) return 'Expires ' + target.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (d > 0) return `${d}d ${h % 24}h left`;
+  if (h > 0) return `${h}h ${m % 60}m left`;
+  if (m > 0) return `${m}m left`;
+  return 'Ending soon';
 }
 
 async function loadResults() {
+  resetResultsUI();
   const poll = S.selectedPoll;
-  if (!poll || !poll.id) { triggerBars(); return; }
+  if (!poll || !poll.id) { showToast('No poll selected'); return; }
   try {
     const r = await fetch('/api/polls/' + poll.id + '/results');
     const d = await r.json();
-    if (!r.ok) { triggerBars(); return; }
+    if (!r.ok) {
+      const head = document.querySelector('.res-head');
+      if (head) head.innerHTML = '<h2>Results unavailable</h2><p class="tm">' + (d.error || 'Could not load results') + '</p>';
+      return;
+    }
     const head = document.querySelector('.res-head');
     if (head) {
-      head.innerHTML = '<span class="badge pub-badge">Results published</span><h2>' + d.title + '</h2><p class="tm">' + d.totalResponses + ' total responses · ' + (d.desc || '') + ' · Closed</p>';
+      head.innerHTML = '<span class="badge pub-badge">Results published</span><h2>' + escapeHtml(d.title) + '</h2><p class="tm">' + d.totalResponses + ' total responses · ' + escapeHtml(d.desc || '') + ' · Closed</p>';
     }
     const wrap = document.querySelector('.results-wrap');
-    wrap.querySelectorAll('.aq').forEach(e => e.remove());
     const btn = wrap.querySelector('div[style]') || null;
-    const colors = ['hi', 'md', 'lo', 'dim', 'hi', 'md'];
+    const colors = ['hi','md','lo','dim','hi','md'];
     d.questions.forEach((q, i) => {
       const barsHtml = q.options.map((o, j) => {
         const pct = o.percentage || 0;
-        return '<div class="ab"><span class="abl">' + o.text + '</span><div class="abt"><div class="abf ' + colors[j % colors.length] + '" style="width:' + pct + '%"></div></div><span class="abv mono">' + pct + '%</span></div>';
+        return '<div class="ab"><span class="abl">' + escapeHtml(o.text) + '</span><div class="abt"><div class="abf ' + colors[j % colors.length] + '" style="width:' + pct + '%"></div></div><span class="abv mono">' + pct + '%</span></div>';
       }).join('');
       const div = document.createElement('div');
       div.className = 'aq';
-      div.innerHTML = '<div class="aq-h"><div><div class="aq-m">Question ' + (i + 1) + '</div><div class="aq-t">' + q.text + '</div></div></div><div class="aq-bars">' + barsHtml + '</div>';
+      div.innerHTML = '<div class="aq-h"><div><div class="aq-m">Question ' + (i+1) + '</div><div class="aq-t">' + escapeHtml(q.text) + '</div></div></div><div class="aq-bars">' + barsHtml + '</div>';
       if (btn) wrap.insertBefore(div, btn);
       else wrap.appendChild(div);
     });
-  } catch (e) { console.error('Results error:', e); triggerBars(); }
+  } catch(e) {
+    console.error('Results error:', e);
+    const head = document.querySelector('.res-head');
+    if (head) head.innerHTML = '<h2>Results unavailable</h2><p class="tm">Network error — try refreshing</p>';
+  }
+}
+
+function resetResultsUI() {
+  const wrap = document.querySelector('.results-wrap');
+  if (!wrap) return;
+  // Strip any leftover/demo question blocks
+  wrap.querySelectorAll('.aq').forEach(e => e.remove());
+  const head = document.querySelector('.res-head');
+  if (head) head.innerHTML = '<h2>Loading…</h2>';
 }
 
 async function loadAnalytics() {
+  resetAnalyticsUI();
   const poll = S.selectedPoll;
-  if (!poll || !poll.id) { triggerBars(); return; }
+  if (!poll || !poll.id) { showToast('Select a poll from the dashboard first'); navigate('dashboard', false); return; }
   const token = localStorage.getItem('token');
   try {
     const r = await fetch('/api/polls/' + poll.id + '/analytics', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     const d = await r.json();
-    if (!r.ok) { triggerBars(); return; }
+    if (!r.ok) { showToast('Could not load analytics'); return; }
 
     const titleEl = document.querySelector('.analytics-title');
     const subtitleEl = document.querySelector('.analytics-subtitle');
@@ -67,21 +173,48 @@ async function loadAnalytics() {
     const expiryEl = document.getElementById('a-expiry');
     if (totalEl) totalEl.textContent = d.totalResponses;
     if (wsEl) wsEl.textContent = d.totalResponses;
-    if (expiryEl) expiryEl.textContent = d.expiry ? new Date(d.expiry).toLocaleDateString() : '—';
+    if (expiryEl) expiryEl.textContent = d.expiry ? humanExpiry(d.expiry) : '—';
+
+    const engEl = document.getElementById('a-engagement');
+    const modeEl = document.getElementById('a-mode');
+    const modeSubEl = document.getElementById('a-mode-sub');
+    if (engEl) engEl.textContent = (d.engagementRate != null) ? d.engagementRate + '%' : '—';
+    if (modeEl) modeEl.textContent = (d.anonCount || 0) + ' · ' + (d.authCount || 0);
+    if (modeSubEl) modeSubEl.textContent = 'anonymous · authenticated';
+
+    const wsEp = document.getElementById('ws-ep');
+    if (wsEp) wsEp.textContent = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 
     const wrap = document.getElementById('analytics-questions');
     if (!wrap) return;
     wrap.innerHTML = '';
     d.questions.forEach((q, i) => {
       const total = q.totalAnswers || 0;
-      const colors = ['hi', 'md', 'lo', 'dim', 'hi', 'md'];
+      const colors = ['hi','md','lo','dim','hi','md'];
       const barsHtml = q.options.map((o, j) => {
         const pct = o.percentage || 0;
-        return `<div class="ab"><span class="abl">${o.text}</span><div class="abt"><div class="abf ${colors[j % colors.length]}" style="width:${pct}%"></div></div><span class="abv mono">${o.count} · ${pct}%</span></div>`;
+        return `<div class="ab"><span class="abl">${o.text}</span><div class="abt"><div class="abf ${colors[j%colors.length]}" style="width:${pct}%"></div></div><span class="abv mono">${o.count} · ${pct}%</span></div>`;
       }).join('');
-      wrap.innerHTML += `<div class="aq"><div class="aq-h"><div><div class="aq-m">Question ${i + 1} · ${q.mandatory ? 'mandatory' : 'optional'}</div><div class="aq-t">${q.text}</div></div><span class="aq-c mono">${total} resp.</span></div><div class="aq-bars">${barsHtml}</div></div>`;
+      wrap.innerHTML += `<div class="aq"><div class="aq-h"><div><div class="aq-m">Question ${i+1} · ${q.mandatory?'mandatory':'optional'}</div><div class="aq-t">${q.text}</div></div><span class="aq-c mono">${total} resp.</span></div><div class="aq-bars">${barsHtml}</div></div>`;
     });
-  } catch (e) { console.error('Analytics error:', e); triggerBars(); }
+  } catch(e) { console.error('Analytics error:', e); showToast('Could not load analytics'); }
+}
+
+function resetAnalyticsUI() {
+  const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setText('a-total', '—');
+  setText('a-engagement', '—');
+  setText('a-mode', '—');
+  setText('a-mode-sub', 'anonymous · authenticated');
+  setText('a-expiry', '—');
+  setText('ws-cnt', '0');
+  setText('ws-n', '0');
+  const wsEp = document.getElementById('ws-ep');
+  if (wsEp) wsEp.textContent = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+  const wsNew = document.getElementById('ws-new'); if (wsNew) wsNew.style.display = 'none';
+  const wrap = document.getElementById('analytics-questions'); if (wrap) wrap.innerHTML = '';
+  const titleEl = document.querySelector('.analytics-title'); if (titleEl) titleEl.textContent = 'Loading…';
+  const subtitleEl = document.querySelector('.analytics-subtitle'); if (subtitleEl) subtitleEl.textContent = '';
 }
 
 function dtAutoTab(el, nextId, maxLen) {
@@ -92,19 +225,19 @@ function dtAutoTab(el, nextId, maxLen) {
 }
 
 function getDateFromInputs(prefix) {
-  const dd = document.getElementById(prefix + '-dd')?.value.padStart(2, '0');
-  const mm = document.getElementById(prefix + '-mm')?.value.padStart(2, '0');
-  const yyyy = document.getElementById(prefix + '-yyyy')?.value;
-  let hh = parseInt(document.getElementById(prefix + '-hh')?.value) || 12;
-  const min = document.getElementById(prefix + '-min')?.value.padStart(2, '0') || '00';
-  const ampm = document.getElementById(prefix + '-ampm')?.value;
+  const dd = document.getElementById(prefix+'-dd')?.value.padStart(2,'0');
+  const mm = document.getElementById(prefix+'-mm')?.value.padStart(2,'0');
+  const yyyy = document.getElementById(prefix+'-yyyy')?.value;
+  let hh = parseInt(document.getElementById(prefix+'-hh')?.value) || 12;
+  const min = document.getElementById(prefix+'-min')?.value.padStart(2,'0') || '00';
+  const ampm = document.getElementById(prefix+'-ampm')?.value;
   if (ampm === 'PM' && hh !== 12) hh += 12;
   if (ampm === 'AM' && hh === 12) hh = 0;
   if (!dd || !mm || !yyyy || yyyy.length < 4) return null;
-  return new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2, '0')}:${min}:00`);
+  return new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2,'0')}:${min}:00`);
 }
 const S = {
-  user: null, theme: localStorage.getItem('theme') || 'dark', answers: {}, polls: [{ id: 'p1', title: 'Team Retrospective Q2', desc: 'Sprint feedback', mode: 'anonymous', status: 'live', responses: 127, questions: 4, expiry: '2h 14m' }, { id: 'p2', title: 'Product Feature Priorities', desc: 'User research', mode: 'authenticated', status: 'active', responses: 89, questions: 6, expiry: '3d 7h' }, { id: 'p3', title: 'Onboarding UX Survey', desc: 'New user feedback', mode: 'anonymous', status: 'active', responses: 341, questions: 5, expiry: '1d 20h' }, { id: 'p4', title: 'Q1 Engineering Pulse', desc: 'Internal', mode: 'anonymous', status: 'published', responses: 512, questions: 7, expiry: 'Ended' }, { id: 'p5', title: 'Design System Feedback', desc: 'Design team', mode: 'authenticated', status: 'expired', responses: 178, questions: 4, expiry: 'Ended' }],
+  user: null, theme: localStorage.getItem('theme') || 'dark', answers: {}, polls: [],
   selectedPoll: null, newPoll: { title: '', desc: '', expiry: '', mode: 'anonymous' }, qCount: 0, liveCount: 127
 };
 
@@ -116,17 +249,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mc-auth').addEventListener('click', () => selMode('authenticated'));
   document.getElementById('mc-both').addEventListener('click', () => selMode('both'));
   document.getElementById('theme-toggle').addEventListener('click', () => { applyTheme(S.theme === 'dark' ? 'light' : 'dark'); showToast(S.theme === 'light' ? '☀️ Light mode' : '🌙 Dark mode') });
-  document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin() });
-  document.getElementById('signup-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doSignup() });
+  document.getElementById('login-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin() });
+  document.getElementById('signup-pw').addEventListener('keydown', e => { if(e.key==='Enter') doSignup() });
   initScrollReveal();
   animateHeroStats();
   startLiveCounter();
   addQ();
   selMode('anonymous');
-  navigate('landing', false);
   const params = new URLSearchParams(window.location.search);
+  // Default to landing unless an inbound deep-link will take over (?poll= or ?code=).
+  // Skipping the landing nav here keeps the URL intact for loadPublicPoll/handleOIDCCallback.
+  if (!params.get('poll') && !params.get('code')) navigate('landing', false);
   if (params.get('code'))
     handleOIDCCallback(params.get('code'));
+  if (params.get('poll'))
+    loadPublicPoll(params.get('poll'));
   const token = localStorage.getItem('token');
   if (token) fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json()).then(d => { if (d.user) { S.user = d.user; updateNav() } }).catch(() => { });
 });
@@ -147,6 +284,28 @@ function initCursor() {
 function initNav() {
   document.querySelectorAll('[data-nav]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.nav)));
   document.getElementById('logout-btn').addEventListener('click', doLogout);
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('user-menu');
+    const wrap = e.target.closest('.user-menu-wrap');
+    if (menu && menu.classList.contains('open') && !wrap) closeUserMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeUserMenu(); });
+}
+
+function toggleUserMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('user-menu');
+  const btn = document.getElementById('nav-avatar');
+  if (!menu) return;
+  const isOpen = menu.classList.toggle('open');
+  if (btn) btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+function closeUserMenu() {
+  const menu = document.getElementById('user-menu');
+  const btn = document.getElementById('nav-avatar');
+  if (menu) menu.classList.remove('open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 function navigate(page, animate = true) {
@@ -168,6 +327,15 @@ function switchPage(page) {
     window.scrollTo(0, 0);
   }
 
+  // Keep the URL in sync with the current page so a refresh doesn't snap back to a poll.
+  // Pages that own their own URL (poll-public, results) set it themselves in loadPublicPoll.
+  if (page !== 'poll-public' && page !== 'results') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('poll')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }
+
   updateNav();
 
   if (page === 'analytics') {
@@ -175,6 +343,12 @@ function switchPage(page) {
   }
   if (page === 'results') {
     setTimeout(loadResults, 100);
+  }
+  if (page === 'profile') {
+    setTimeout(loadProfilePage, 50);
+  }
+  if (page === 'settings') {
+    setTimeout(loadSettingsPage, 50);
   }
 
 
@@ -195,7 +369,24 @@ function updateNav() {
   document.getElementById('nav-auth').style.display = a ? '' : 'none';
   document.getElementById('nav-guest-btns').style.display = a ? 'none' : '';
   document.getElementById('nav-auth-btns').style.display = a ? '' : 'none';
-  if (a) document.getElementById('nav-avatar').textContent = S.user.name?.[0]?.toUpperCase() || 'V';
+  if (a) renderUserAvatar();
+}
+
+function renderUserAvatar() {
+  if (!S.user) return;
+  const initial = (S.user.name?.[0] || 'V').toUpperCase();
+  const av = S.user.avatar || null;
+  const setAv = (el) => {
+    if (!el) return;
+    if (av) { el.style.backgroundImage = "url('" + av.replace(/'/g, "\\'") + "')"; el.classList.add('has-img'); el.textContent = ''; }
+    else { el.style.backgroundImage = ''; el.classList.remove('has-img'); el.textContent = initial; }
+  };
+  setAv(document.getElementById('nav-avatar'));
+  setAv(document.getElementById('user-menu-avatar'));
+  setAv(document.getElementById('profile-avatar'));
+  const n = document.getElementById('user-menu-name'); if (n) n.textContent = S.user.name || '—';
+  const e = document.getElementById('user-menu-email'); if (e) e.textContent = S.user.email || '—';
+  const rm = document.getElementById('avatar-remove-btn'); if (rm) rm.style.display = av ? '' : 'none';
 }
 
 async function doLogin() {
@@ -208,7 +399,10 @@ async function doLogin() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Login failed');
     S.user = d.user; localStorage.setItem('token', d.token);
-    showToast('Welcome back, ' + d.user.name + '! 👋'); navigate('dashboard');
+    showToast('Welcome back, ' + d.user.name + '! 👋');
+    const pending = sessionStorage.getItem('pendingPoll');
+    if (pending) { sessionStorage.removeItem('pendingPoll'); loadPublicPoll(pending); }
+    else navigate('dashboard');
   } catch (e) { err.textContent = e.message; err.style.display = '' }
   finally { setLoading(btn, false) }
 }
@@ -224,7 +418,10 @@ async function doSignup() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Registration failed');
     S.user = d.user; localStorage.setItem('token', d.token);
-    showToast('Welcome to Voxly, ' + d.user.name + '! 🎉'); navigate('dashboard');
+    showToast('Welcome to Voxly, ' + d.user.name + '! 🎉');
+    const pending = sessionStorage.getItem('pendingPoll');
+    if (pending) { sessionStorage.removeItem('pendingPoll'); loadPublicPoll(pending); }
+    else navigate('dashboard');
   } catch (e) { err.textContent = e.message; err.style.display = '' }
   finally { setLoading(btn, false) }
 }
@@ -244,7 +441,18 @@ async function handleOIDCCallback(code) {
 
 function doLogout() { S.user = null; localStorage.removeItem('token'); showToast('Logged out'); navigate('landing') }
 
-function setLoading(btn, on) { btn.querySelector('.bt').style.display = on ? 'none' : ''; btn.querySelector('.bl').style.display = on ? '' : 'none'; btn.disabled = on }
+function setLoading(btn, on) {
+  if (!btn) return;
+  const bt = btn.querySelector('.bt'); const bl = btn.querySelector('.bl');
+  if (bt) bt.style.display = on ? 'none' : '';
+  if (bl) bl.style.display = on ? '' : 'none';
+  if (!bt && !bl) {
+    // Fallback for plain buttons: stash original text and swap to "…"
+    if (on) { btn.dataset._t = btn.textContent; btn.textContent = '…'; }
+    else if (btn.dataset._t !== undefined) { btn.textContent = btn.dataset._t; delete btn.dataset._t; }
+  }
+  btn.disabled = on;
+}
 
 function pwStrength(v) {
   const s = document.getElementById('pw-str'), f = document.getElementById('pw-fill'), l = document.getElementById('pw-lbl');
@@ -306,7 +514,7 @@ function resetCreatePoll() {
   document.getElementById('poll-title').value = '';
   document.getElementById('poll-desc').value = '';
   document.getElementById('tc').textContent = '0';
-  ['exp-dd', 'exp-mm', 'exp-yyyy', 'exp-hh', 'exp-min', 'start-dd', 'start-mm', 'start-yyyy', 'start-hh', 'start-min'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' });
+  ['exp-dd','exp-mm','exp-yyyy','exp-hh','exp-min','start-dd','start-mm','start-yyyy','start-hh','start-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
 
 
   const qContainer = document.getElementById('q-container');
@@ -430,8 +638,14 @@ async function publishPoll() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Failed to publish');
     showToast('Poll published! 🚀');
-    setTimeout(async () => { await fetchAndRenderPolls(); openShare(); navigate('analytics'); }, 600);
-  } catch (e) {
+    setTimeout(async () => {
+      await fetchAndRenderPolls();
+      const created = S.polls.find(p => p.id === d.id);
+      S.selectedPoll = created || { id: d.id, title: S.newPoll.title, desc: S.newPoll.desc, mode: S.newPoll.mode };
+      openShare();
+      navigate('analytics');
+    }, 600);
+  } catch(e) {
     showToast('Error: ' + e.message);
   }
 }
@@ -449,13 +663,35 @@ async function fetchAndRenderPolls() {
         desc: p.desc || p.description || '',
         mode: p.mode,
         status: p.status,
+        published: !!p.published,
         responses: p.responseCount || 0,
         questions: p.questionCount || 0,
-        expiry: p.expiry ? new Date(p.expiry).toLocaleDateString() : '—'
+        expiry: p.expiry,
+        expiryDisplay: p.expiry ? new Date(p.expiry).toLocaleDateString() : '—'
       }));
     }
-  } catch (e) { }
+  } catch(e) {}
   renderPolls();
+  renderDashboardStats();
+}
+
+function renderDashboardStats() {
+  const polls = S.polls || [];
+  const total = polls.length;
+  const active = polls.filter(p => p.status === 'active').length;
+  const published = polls.filter(p => p.published || p.status === 'published').length;
+  const responses = polls.reduce((s, p) => s + (p.responses || 0), 0);
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('d-total-polls', total.toLocaleString());
+  set('d-total-responses', responses.toLocaleString());
+  set('d-active-polls', active);
+  set('d-published-polls', published);
+
+  // Subtitles
+  const expired = polls.filter(p => p.status === 'expired').length;
+  set('d-total-polls-sub', total === 0 ? 'No polls yet' : (expired > 0 ? expired + ' expired' : 'all healthy'));
+  set('d-active-polls-sub', active === 1 ? '1 accepting responses' : active + ' accepting responses');
 }
 
 function renderPolls(filter = '') {
@@ -464,10 +700,9 @@ function renderPolls(filter = '') {
   tbody.innerHTML = '';
   list.forEach(p => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><div class="pn">${p.title}</div><div class="pm">${p.desc} · ${p.mode}</div></td><td>${sBadge(p.status)}</td><td class="mono">${p.responses.toLocaleString()}</td><td class="mono">${Array.isArray(p.questions) ? p.questions.length : p.questions}</td><td class="mono" style="font-size:.76rem;color:var(--text3)">${p.expiry}</td><td><div class="abts">${sActions(p)}</div></td>`;
+    tr.innerHTML = `<td><div class="pn">${p.title}</div><div class="pm">${p.desc} · ${p.mode}</div></td><td>${sBadge(p.status)}</td><td class="mono">${p.responses.toLocaleString()}</td><td class="mono">${Array.isArray(p.questions)?p.questions.length:p.questions}</td><td class="mono" style="font-size:.76rem;color:var(--text3)">${p.expiryDisplay || '—'}</td><td><div class="abts">${sActions(p)}</div></td>`;
     tr.addEventListener('click', () => {
       S.selectedPoll = p;
-      renderAnalytics();
       navigate('analytics');
     });
     tbody.appendChild(tr);
@@ -562,7 +797,7 @@ function pick(el, qid) {
   el.closest('.qc').querySelectorAll('.ro').forEach(r => r.classList.remove('selected'));
   el.classList.add('selected');
   el.animate([{ transform: 'scale(.97)' }, { transform: 'scale(1)' }], { duration: 130 });
-  S.answers[qid] = el.querySelector('span').textContent;
+  S.answers[qid] = { optionId: el.dataset.oid || '', text: el.querySelector('span').textContent };
   el.closest('.qc').classList.add('answered');
   updateProgress();
   document.getElementById('val-alert').style.display = 'none';
@@ -576,38 +811,48 @@ function updateProgress() {
 }
 
 async function submitPoll() {
-  const missing = ['q1', 'q2'].filter(q => !S.answers[q]);
+  const poll = S.currentPublicPoll;
+  if (!poll || !poll.id) { showToast('Poll not loaded'); return; }
+
+  // Validate mandatory questions (client-side mirror of server check)
+  const cards = document.querySelectorAll('#poll-qs .qc');
+  const missing = [];
+  cards.forEach(c => {
+    if (c.dataset.m === 'true' && !S.answers[c.dataset.q]) missing.push(c.dataset.q);
+  });
   if (missing.length) {
     const v = document.getElementById('val-alert'); v.style.display = '';
     v.scrollIntoView({ behavior: 'smooth', block: 'center' });
     v.animate([{ transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 180, iterations: 2 });
     return;
   }
-  try { await fetch('/api/polls/demo-id/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers: S.answers }) }) } catch (e) { }
-  const poll = S.selectedPoll;
 
-  if (poll) {
+  // Build answers in the shape the server expects: [{ questionId, optionId }]
+  const answers = [];
+  cards.forEach(c => {
+    const qid = c.dataset.q;
+    const a = S.answers[qid];
+    if (!a) return; // optional and skipped
+    answers.push({ questionId: c.dataset.qid, optionId: a.optionId });
+  });
 
-    poll.responses += 1;
+  const token = localStorage.getItem('token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
 
-    Object.entries(S.answers)
-      .forEach(([qKey, selected]) => {
+  try {
+    const r = await fetch('/api/polls/' + poll.id + '/responses', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ answers })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showToast(err.error || 'Could not submit response');
+      return;
+    }
+  } catch (e) { showToast('Network error — try again'); return; }
 
-        const qIndex =
-          Number(qKey.replace('q', '')) - 1;
-
-        if (
-          poll.questions[qIndex] &&
-          poll.questions[qIndex]
-            .options[selected]
-        ) {
-
-          poll.questions[qIndex]
-            .options[selected]
-            .votes += 1;
-        }
-      });
-  }
   navigate('success');
 }
 
@@ -633,12 +878,9 @@ function startLiveCounter() {
   setInterval(() => {
     if (Math.random() > .55) {
       const inc = Math.floor(Math.random() * 3) + 1; S.liveCount += inc;
-      ['ws-cnt', 'hero-count', 'a-total'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.textContent = S.liveCount.toLocaleString(); el.animate([{ color: 'var(--success)' }, { color: '' }], { duration: 700 }) }
-      });
-      const badge = document.getElementById('ws-new');
-      if (badge) { document.getElementById('ws-n').textContent = inc; badge.style.display = ''; clearTimeout(badge._t); badge._t = setTimeout(() => badge.style.display = 'none', 1800) }
+      // Only animate the hero counter on the landing page. Never touch real analytics widgets.
+      const el = document.getElementById('hero-count');
+      if (el) { el.textContent = S.liveCount.toLocaleString(); el.animate([{ color: 'var(--success)' }, { color: '' }], { duration: 700 }) }
       flickerHeroBars();
     }
   }, 3000);
@@ -682,10 +924,24 @@ function openShare() {
     : window.location.origin;
   document.getElementById('share-link-display').textContent = link;
   S.currentShareLink = link;
+  // Update mode + expiry info to reflect the real poll
+  const info = document.querySelector('#share-modal .modal-info');
+  if (info && poll) {
+    const modeLabels = { anonymous: '🎭 Anonymous', authenticated: '🔐 Authenticated', both: '👥 Anonymous or signed in' };
+    const modeTxt = modeLabels[poll.mode] || modeLabels.anonymous;
+    const expTxt = poll.expiry ? humanExpiry(poll.expiry) : '';
+    info.innerHTML = '<span>' + modeTxt + '</span>' + (expTxt ? '<span>·</span><span>' + expTxt + '</span>' : '');
+  }
   document.getElementById('share-modal').classList.add('open');
 }
 function closeShare() { document.getElementById('share-modal').classList.remove('open') }
-function copyLink() { navigator.clipboard.writeText(S.currentShareLink || window.location.origin).catch(() => { }); showToast('Link copied! 📋') }
+function previewPoll() {
+  const poll = S.selectedPoll;
+  closeShare();
+  if (poll && poll.id) loadPublicPoll(poll.id);
+  else showToast('No poll selected');
+}
+function copyLink() { navigator.clipboard.writeText(S.currentShareLink || window.location.origin).catch(() => {}); showToast('Link copied! 📋') }
 async function publishResults() {
   const poll = S.selectedPoll;
   if (!poll || !poll.id) { showToast('No poll selected'); return; }
@@ -698,7 +954,7 @@ async function publishResults() {
     if (!r.ok) throw new Error('Failed to publish');
     showToast('Results published publicly 🎉');
     setTimeout(() => navigate('results'), 500);
-  } catch (e) { showToast('Error: ' + e.message); }
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 function showToast(msg) {
@@ -713,3 +969,167 @@ function togglePw(id, btn) {
 }
 
 function scrollToFeatures() { const el = document.querySelector('.features-wrap'); if (el) el.scrollIntoView({ behavior: 'smooth' }); else { navigate('landing', false); setTimeout(() => { const e = document.querySelector('.features-wrap'); if (e) e.scrollIntoView({ behavior: 'smooth' }) }, 350) } }
+
+/* ===== Profile page ===== */
+function loadProfilePage() {
+  if (!S.user) { navigate('login'); return; }
+  const nameEl = document.getElementById('profile-name');
+  const emailEl = document.getElementById('profile-email');
+  if (nameEl) nameEl.value = S.user.name || '';
+  if (emailEl) emailEl.value = S.user.email || '';
+  const err = document.getElementById('profile-err'); if (err) err.style.display = 'none';
+  renderUserAvatar();
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profile-name').value.trim();
+  const email = document.getElementById('profile-email').value.trim();
+  const err = document.getElementById('profile-err');
+  const btn = document.getElementById('profile-save-btn');
+  err.style.display = 'none';
+  if (!name || !email) { err.textContent = 'Name and email are required.'; err.style.display = ''; return; }
+  setLoading(btn, true);
+  try {
+    const r = await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ name, email })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not save profile');
+    S.user = d.user;
+    renderUserAvatar();
+    showToast('Profile updated ✓');
+  } catch (e) { err.textContent = e.message; err.style.display = ''; }
+  finally { setLoading(btn, false); }
+}
+
+/* ===== Avatar upload ===== */
+function onAvatarPicked(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ''; // allow re-selecting same file
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('Please choose an image file'); return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('Image is too large (max 5MB before resize)'); return; }
+  const reader = new FileReader();
+  reader.onload = () => resizeAndUploadAvatar(reader.result);
+  reader.onerror = () => showToast('Could not read image');
+  reader.readAsDataURL(file);
+}
+
+function resizeAndUploadAvatar(dataUrl) {
+  const img = new Image();
+  img.onload = async () => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    // cover-crop
+    const ratio = img.width / img.height;
+    let sx, sy, sw, sh;
+    if (ratio > 1) { sh = img.height; sw = img.height; sx = (img.width - sw) / 2; sy = 0; }
+    else { sw = img.width; sh = img.width; sy = (img.height - sh) / 2; sx = 0; }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+    const out = canvas.toDataURL('image/jpeg', 0.85);
+    await uploadAvatar(out);
+  };
+  img.onerror = () => showToast('Invalid image');
+  img.src = dataUrl;
+}
+
+async function uploadAvatar(dataUrl) {
+  try {
+    const r = await fetch('/api/auth/me/avatar', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ avatar: dataUrl })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Upload failed');
+    S.user.avatar = d.avatar;
+    renderUserAvatar();
+    showToast('Profile picture updated ✓');
+  } catch (e) { showToast(e.message); }
+}
+
+async function removeAvatar() {
+  try {
+    const r = await fetch('/api/auth/me/avatar', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ avatar: null })
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Could not remove'); }
+    S.user.avatar = null;
+    renderUserAvatar();
+    showToast('Profile picture removed');
+  } catch (e) { showToast(e.message); }
+}
+
+/* ===== Settings page ===== */
+function loadSettingsPage() {
+  if (!S.user) { navigate('login'); return; }
+  ['pw-current','pw-new','pw-confirm','delete-confirm-pw'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['pw-err','delete-err'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+}
+
+async function changePassword() {
+  const current = document.getElementById('pw-current').value;
+  const next = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const err = document.getElementById('pw-err');
+  const btn = document.getElementById('pw-save-btn');
+  err.style.display = 'none';
+  if (!current || !next || !confirm) { err.textContent = 'All fields required.'; err.style.display = ''; return; }
+  if (next.length < 8) { err.textContent = 'New password must be at least 8 characters.'; err.style.display = ''; return; }
+  if (next !== confirm) { err.textContent = 'New passwords do not match.'; err.style.display = ''; return; }
+  setLoading(btn, true);
+  try {
+    const r = await fetch('/api/auth/me/password', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ currentPassword: current, newPassword: next })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not change password');
+    ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+    showToast('Password updated ✓');
+  } catch (e) { err.textContent = e.message; err.style.display = ''; }
+  finally { setLoading(btn, false); }
+}
+
+/* ===== Delete account ===== */
+function openDeleteAccount() {
+  const m = document.getElementById('delete-account-modal'); if (!m) return;
+  const pw = document.getElementById('delete-confirm-pw'); if (pw) pw.value = '';
+  const err = document.getElementById('delete-err'); if (err) err.style.display = 'none';
+  m.classList.add('open');
+  setTimeout(() => { const pw = document.getElementById('delete-confirm-pw'); if (pw) pw.focus(); }, 50);
+}
+
+function closeDeleteAccount() {
+  const m = document.getElementById('delete-account-modal'); if (m) m.classList.remove('open');
+}
+
+async function confirmDeleteAccount() {
+  const password = document.getElementById('delete-confirm-pw').value;
+  const err = document.getElementById('delete-err');
+  const btn = document.getElementById('delete-confirm-btn');
+  err.style.display = 'none';
+  if (!password) { err.textContent = 'Enter your password to confirm.'; err.style.display = ''; return; }
+  setLoading(btn, true);
+  try {
+    const r = await fetch('/api/auth/me', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ password })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Could not delete account');
+    closeDeleteAccount();
+    S.user = null; localStorage.removeItem('token');
+    showToast('Account deleted');
+    navigate('landing');
+  } catch (e) { err.textContent = e.message; err.style.display = ''; }
+  finally { setLoading(btn, false); }
+}

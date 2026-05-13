@@ -60,8 +60,44 @@
         <button class="btn primary" data-nav="signup">Get started</button>
       </div>
       <div id="nav-auth-btns" style="display:none">
-        <div class="nav-avatar" id="nav-avatar">V</div>
-        <button class="btn ghost" id="logout-btn">Log out</button>
+        <div class="user-menu-wrap">
+          <button class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)" aria-haspopup="true"
+            aria-expanded="false">V</button>
+          <div class="user-menu" id="user-menu" role="menu">
+            <div class="user-menu-head">
+              <div class="user-menu-avatar" id="user-menu-avatar">V</div>
+              <div class="user-menu-info">
+                <div class="user-menu-name" id="user-menu-name">User</div>
+                <div class="user-menu-email" id="user-menu-email">—</div>
+              </div>
+            </div>
+            <div class="user-menu-sep"></div>
+            <button class="user-menu-item" onclick="navigate('profile');closeUserMenu()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Profile
+            </button>
+            <button class="user-menu-item" onclick="navigate('settings');closeUserMenu()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              Settings
+            </button>
+            <div class="user-menu-sep"></div>
+            <button class="user-menu-item danger" id="logout-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Log out
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -323,23 +359,23 @@
         <div class="stats-grid">
           <div class="sc">
             <div class="sc-lbl">Total polls</div>
-            <div class="sc-val counter" data-target="6">0</div>
-            <div class="sc-d up">↑ 2 this week</div>
+            <div class="sc-val" id="d-total-polls">0</div>
+            <div class="sc-d neutral" id="d-total-polls-sub">—</div>
           </div>
           <div class="sc">
             <div class="sc-lbl">Total responses</div>
-            <div class="sc-val counter" data-target="1247">0</div>
-            <div class="sc-d up">↑ 189 today</div>
+            <div class="sc-val" id="d-total-responses">0</div>
+            <div class="sc-d neutral" id="d-total-responses-sub">across all polls</div>
           </div>
           <div class="sc">
             <div class="sc-lbl">Active polls</div>
-            <div class="sc-val counter" data-target="3">0</div>
-            <div class="sc-d live"><span class="live-dot sm"></span>1 live now</div>
+            <div class="sc-val" id="d-active-polls">0</div>
+            <div class="sc-d neutral" id="d-active-polls-sub">accepting responses</div>
           </div>
           <div class="sc">
-            <div class="sc-lbl">Avg. completion</div>
-            <div class="sc-val">82<span style="font-size:1.1rem">%</span></div>
-            <div class="sc-d up">↑ 4% vs last</div>
+            <div class="sc-lbl">Published</div>
+            <div class="sc-val" id="d-published-polls">0</div>
+            <div class="sc-d neutral" id="d-published-polls-sub">results visible</div>
           </div>
         </div>
         <div class="table-card">
@@ -699,28 +735,28 @@
         </div>
         <div class="ws-bar">
           <div class="ws-dot"></div><span class="tm">WebSocket connected</span><span class="ws-cnt"><span
-              id="ws-cnt">127</span> responses</span><span class="ws-ep mono">ws://localhost:3000</span><span
-            class="ws-new" id="ws-new" style="display:none">+<span id="ws-n">1</span> new</span>
+              id="ws-cnt">0</span> responses</span><span class="ws-ep mono" id="ws-ep">ws://</span><span class="ws-new"
+            id="ws-new" style="display:none">+<span id="ws-n">1</span> new</span>
         </div>
         <div class="stats-grid">
           <div class="sc">
             <div class="sc-lbl">Total responses</div>
-            <div class="sc-val" id="a-total">127</div>
-            <div class="sc-d up">↑ 14 last hour</div>
+            <div class="sc-val" id="a-total">—</div>
+            <div class="sc-d neutral">live</div>
           </div>
           <div class="sc">
-            <div class="sc-lbl">Completion rate</div>
-            <div class="sc-val">84%</div>
-            <div class="sc-d up">↑ 2% vs avg</div>
+            <div class="sc-lbl">Engagement</div>
+            <div class="sc-val" id="a-engagement">—</div>
+            <div class="sc-d neutral">avg. answered</div>
           </div>
           <div class="sc">
-            <div class="sc-lbl">Avg. time</div>
-            <div class="sc-val mono" style="font-size:1.3rem">1m 47s</div>
-            <div class="sc-d neutral">median</div>
+            <div class="sc-lbl">By mode</div>
+            <div class="sc-val" id="a-mode" style="font-size:1.3rem">—</div>
+            <div class="sc-d neutral" id="a-mode-sub">anon · auth</div>
           </div>
           <div class="sc">
             <div class="sc-lbl">Expires</div>
-            <div class="sc-val mono" id="a-expiry" style="font-size:1.2rem">2h 14m</div>
+            <div class="sc-val mono" id="a-expiry" style="font-size:1.2rem">—</div>
             <div class="sc-d live"><span class="live-dot sm"></span>Active</div>
           </div>
         </div>
@@ -745,46 +781,115 @@
 
     <section class="page" id="page-results">
       <div class="results-wrap">
-        <div class="res-head"><span class="badge pub-badge">Results published</span>
-          <h2>Team Retrospective Q2</h2>
-          <p class="tm">127 total responses · Sprint feedback · Closed</p>
-        </div>
-        <div class="aq">
-          <div class="aq-h">
-            <div>
-              <div class="aq-m">Question 1</div>
-              <div class="aq-t">What slowed us down the most this sprint?</div>
-            </div>
-          </div>
-          <div class="aq-bars">
-            <div class="ab"><span class="abl">Too many meetings</span>
-              <div class="abt">
-                <div class="abf hi ab-anim" data-w="42"></div>
-              </div><span class="abv mono">42%</span>
-            </div>
-            <div class="ab"><span class="abl">Unclear requirements</span>
-              <div class="abt">
-                <div class="abf md ab-anim" data-w="31"></div>
-              </div><span class="abv mono">31%</span>
-            </div>
-            <div class="ab"><span class="abl">Context switching</span>
-              <div class="abt">
-                <div class="abf lo ab-anim" data-w="18"></div>
-              </div><span class="abv mono">18%</span>
-            </div>
-            <div class="ab"><span class="abl">Technical debt</span>
-              <div class="abt">
-                <div class="abf dim ab-anim" data-w="9"></div>
-              </div><span class="abv mono">9%</span>
-            </div>
-          </div>
+        <div class="res-head">
+          <h2>Loading…</h2>
         </div>
         <div style="text-align:center;margin-top:2rem"><button class="btn primary lg" data-nav="signup">Create your own
             poll with Voxly →</button></div>
       </div>
     </section>
 
+    <section class="page" id="page-profile">
+      <div class="profile-wrap">
+        <div class="profile-head">
+          <h2>Profile</h2>
+          <p class="tm">Update your account details and profile picture.</p>
+        </div>
+        <div class="profile-card">
+          <div class="profile-avatar-row">
+            <div class="profile-avatar" id="profile-avatar">U</div>
+            <div class="profile-avatar-actions">
+              <label class="btn ghost sm">
+                <input type="file" id="avatar-input" accept="image/*" style="display:none"
+                  onchange="onAvatarPicked(event)">
+                Upload picture
+              </label>
+              <button class="btn ghost sm danger" id="avatar-remove-btn" onclick="removeAvatar()"
+                style="display:none">Remove</button>
+            </div>
+          </div>
+          <div class="profile-form">
+            <div class="form-row">
+              <label>Name</label>
+              <input type="text" id="profile-name" maxlength="100" placeholder="Your name">
+            </div>
+            <div class="form-row">
+              <label>Email</label>
+              <input type="email" id="profile-email" placeholder="you@example.com">
+            </div>
+            <div class="form-err" id="profile-err" style="display:none"></div>
+            <div class="form-actions">
+              <button class="btn primary" id="profile-save-btn" onclick="saveProfile()">Save changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-settings">
+      <div class="profile-wrap">
+        <div class="profile-head">
+          <h2>Settings</h2>
+          <p class="tm">Manage your password and account.</p>
+        </div>
+        <div class="profile-card">
+          <h3 class="card-h">Change password</h3>
+          <div class="profile-form">
+            <div class="form-row">
+              <label>Current password</label>
+              <input type="password" id="pw-current" placeholder="••••••••">
+            </div>
+            <div class="form-row">
+              <label>New password</label>
+              <input type="password" id="pw-new" placeholder="At least 8 characters">
+            </div>
+            <div class="form-row">
+              <label>Confirm new password</label>
+              <input type="password" id="pw-confirm" placeholder="Re-enter new password">
+            </div>
+            <div class="form-err" id="pw-err" style="display:none"></div>
+            <div class="form-actions">
+              <button class="btn primary" id="pw-save-btn" onclick="changePassword()">Update password</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card danger-zone">
+          <h3 class="card-h danger">Danger zone</h3>
+          <p class="tm">Deleting your account is permanent. All your polls and their responses will be deleted.</p>
+          <div class="form-actions">
+            <button class="btn danger" onclick="openDeleteAccount()">Delete account</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <div class="modal-overlay" id="delete-account-modal" onclick="if(event.target===this)closeDeleteAccount()">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Delete account?</h3>
+        <button class="modal-close" onclick="closeDeleteAccount()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <p class="tm">This action cannot be undone. Your profile, all your polls, and all responses to them will be
+        permanently deleted.</p>
+      <div class="form-row" style="margin-top:1rem">
+        <label>Re-enter your password to confirm</label>
+        <input type="password" id="delete-confirm-pw" placeholder="Password">
+      </div>
+      <div class="form-err" id="delete-err" style="display:none"></div>
+      <div class="modal-acts">
+        <button class="btn ghost" onclick="closeDeleteAccount()">Cancel</button>
+        <button class="btn danger" id="delete-confirm-btn" onclick="confirmDeleteAccount()">Delete forever</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeShare()">
     <div class="modal-box">
@@ -802,7 +907,7 @@
       </div>
       <div class="modal-info"><span>🎭 Anonymous</span><span>·</span><span>Expires in 2h 14m</span></div>
       <div class="modal-acts"><button class="btn ghost" onclick="closeShare()">Close</button><button class="btn primary"
-          data-nav="poll-public" onclick="closeShare()">Preview →</button></div>
+          onclick="previewPoll()">Preview →</button></div>
     </div>
   </div>
 
