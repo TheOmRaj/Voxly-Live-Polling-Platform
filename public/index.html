@@ -270,7 +270,7 @@
             <div class="iw"><svg class="ii" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
-              </svg><input class="fi" type="text" placeholder="Arjun Sharma" id="signup-name" autocomplete="name" />
+              </svg><input class="fi" type="text" placeholder="Full Name" id="signup-name" autocomplete="name" />
             </div>
           </div>
           <div class="fg"><label class="fl">Email</label>
@@ -403,30 +403,46 @@
                 rows="2" placeholder="What is this poll about?" id="poll-desc"></textarea></div>
             <div class="fg"><label class="fl">Opens at <span class="opt">optional</span></label>
               <div class="dt-row">
-                <input class="fi dt-part" type="number" id="start-dd" placeholder="DD" min="1" max="31" maxlength="2" oninput="dtAutoTab(this,'start-mm',2)"/>
+                <input class="fi dt-part" type="number" id="start-dd" placeholder="DD" min="1" max="31" maxlength="2"
+                  oninput="dtAutoTab(this,'start-mm',2)" />
                 <span class="dt-sep">/</span>
-                <input class="fi dt-part" type="number" id="start-mm" placeholder="MM" min="1" max="12" maxlength="2" oninput="dtAutoTab(this,'start-yyyy',2)"/>
+                <input class="fi dt-part" type="number" id="start-mm" placeholder="MM" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'start-yyyy',2)" />
                 <span class="dt-sep">/</span>
-                <input class="fi dt-part wide" type="number" id="start-yyyy" placeholder="YYYY" min="2024" max="2099" maxlength="4" oninput="dtAutoTab(this,'start-hh',4)"/>
+                <input class="fi dt-part wide" type="number" id="start-yyyy" placeholder="YYYY" min="2024" max="2099"
+                  maxlength="4" oninput="dtAutoTab(this,'start-hh',4)" />
                 <span class="dt-sep dt-gap"></span>
-                <input class="fi dt-part" type="number" id="start-hh" placeholder="HH" min="1" max="12" maxlength="2" oninput="dtAutoTab(this,'start-min',2)"/>
+                <input class="fi dt-part" type="number" id="start-hh" placeholder="HH" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'start-min',2)" />
                 <span class="dt-sep">:</span>
-                <input class="fi dt-part" type="number" id="start-min" placeholder="MM" min="0" max="59" maxlength="2" oninput="dtAutoTab(this,'start-ampm',2)"/>
-                <select class="fi dt-ampm" id="start-ampm"><option>AM</option><option>PM</option></select>
+                <input class="fi dt-part" type="number" id="start-min" placeholder="MM" min="0" max="59" maxlength="2"
+                  oninput="dtAutoTab(this,'start-ampm',2)" />
+                <select class="fi dt-ampm" id="start-ampm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
               </div>
             </div>
             <div class="fg"><label class="fl">Expires at <span class="req">*</span></label>
               <div class="dt-row">
-                <input class="fi dt-part" type="number" id="exp-dd" placeholder="DD" min="1" max="31" maxlength="2" oninput="dtAutoTab(this,'exp-mm',2)"/>
+                <input class="fi dt-part" type="number" id="exp-dd" placeholder="DD" min="1" max="31" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-mm',2)" />
                 <span class="dt-sep">/</span>
-                <input class="fi dt-part" type="number" id="exp-mm" placeholder="MM" min="1" max="12" maxlength="2" oninput="dtAutoTab(this,'exp-yyyy',2)"/>
+                <input class="fi dt-part" type="number" id="exp-mm" placeholder="MM" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-yyyy',2)" />
                 <span class="dt-sep">/</span>
-                <input class="fi dt-part wide" type="number" id="exp-yyyy" placeholder="YYYY" min="2024" max="2099" maxlength="4" oninput="dtAutoTab(this,'exp-hh',4)"/>
+                <input class="fi dt-part wide" type="number" id="exp-yyyy" placeholder="YYYY" min="2024" max="2099"
+                  maxlength="4" oninput="dtAutoTab(this,'exp-hh',4)" />
                 <span class="dt-sep dt-gap"></span>
-                <input class="fi dt-part" type="number" id="exp-hh" placeholder="HH" min="1" max="12" maxlength="2" oninput="dtAutoTab(this,'exp-min',2)"/>
+                <input class="fi dt-part" type="number" id="exp-hh" placeholder="HH" min="1" max="12" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-min',2)" />
                 <span class="dt-sep">:</span>
-                <input class="fi dt-part" type="number" id="exp-min" placeholder="MM" min="0" max="59" maxlength="2" oninput="dtAutoTab(this,'exp-ampm',2)"/>
-                <select class="fi dt-ampm" id="exp-ampm"><option>AM</option><option>PM</option></select>
+                <input class="fi dt-part" type="number" id="exp-min" placeholder="MM" min="0" max="59" maxlength="2"
+                  oninput="dtAutoTab(this,'exp-ampm',2)" />
+                <select class="fi dt-ampm" id="exp-ampm">
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
               </div>
             </div>
           </div>
@@ -781,8 +797,8 @@
       </div>
       <p class="tm">Copy the link and share. Anyone can respond.</p>
       <div class="link-row">
-        <div class="link-box mono" id="share-link-display">https://voxly.io/p/retro-q2-xK3m</div><button class="btn primary sm"
-          onclick="copyLink()">Copy</button>
+        <div class="link-box mono" id="share-link-display">https://voxly.io/p/retro-q2-xK3m</div><button
+          class="btn primary sm" onclick="copyLink()">Copy</button>
       </div>
       <div class="modal-info"><span>🎭 Anonymous</span><span>·</span><span>Expires in 2h 14m</span></div>
       <div class="modal-acts"><button class="btn ghost" onclick="closeShare()">Close</button><button class="btn primary"
